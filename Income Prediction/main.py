@@ -5,12 +5,13 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 import matplotlib.pyplot as plt
 import seaborn as sns
+import statsmodels.api as sm
+import numpy as np
 
 data = pd.read_csv("Income Prediction/Data/adult.csv")
 
 qualitative_columns = ['workclass', 'education', 'marital.status', 'occupation', 
                        'relationship', 'race', 'sex', 'native.country', 'income']
-print(data.columns)
 
 data = pd.concat([data, pd.get_dummies(data, columns = qualitative_columns)], axis = 1)
 data = data.drop(columns = qualitative_columns)
@@ -25,29 +26,43 @@ scaler = StandardScaler()
 train_X = scaler.fit_transform(train_X)
 test_X = scaler.transform(test_X)
 
+selected_features = []
+remaining_features = list(range(train_X.shape[1]))
+k = 1
+while len(selected_features) < k:
+    best_feature = None
+    best_score = -np.inf
+    for feature in remaining_features:
+        features_to_use = selected_features + [feature]
+        train_X_subset = train_X[:, features_to_use]
+        test_X_subset = test_X[:, features_to_use]
+        model = LogisticRegression()
+        model.fit(train_X_subset, train_y)
+        y_pred = model.predict(test_X_subset)
+        score = accuracy_score(test_y, y_pred)
+        if score > best_score:
+            best_score = score
+            best_feature = feature
+    selected_features.append(best_feature)
+    remaining_features.remove(best_feature)
+
+final_features = remaining_features
+train_X_k = train_X[:, final_features] 
+test_X_k = test_X[:, final_features]  
+model = LogisticRegression()  
+model.fit(train_X_k, train_y)
+y_pred1 = model.predict(test_X_k)
+
 model = LogisticRegression()
-
 model.fit(train_X, train_y)
+y_pred2 = model.predict(test_X)
 
-y_pred = model.predict(test_X)
+# Evaluating the model.
+print(train_X.shape[1])
+print(k)
+accuracy1 = accuracy_score(test_y, y_pred1)
+accuracy2 = accuracy_score(test_y, y_pred2)
 
-# Evaluating the model
-accuracy = accuracy_score(test_y, y_pred)
-conf_matrix = confusion_matrix(test_y, y_pred)
-class_report = classification_report(test_y, y_pred)
+print("accuracy k forward ", accuracy1)
+print("accuracy OLS ", accuracy2)
 
-print("accuracy\n", accuracy)
-print("conf_matrix\n", conf_matrix)
-print("class_report\n", class_report)
-
-# Create a heatmap
-sns.set_theme(style='white')
-plt.figure(figsize=(12, 8))
-sns.heatmap(data_X.corr(), annot=False, cmap='coolwarm', fmt="0.6f", 
-            xticklabels = data_X.columns, 
-            yticklabels = data_X.columns)
-plt.title('Covariance Matrix Heatmap')
-plt.show()
-
-for coef in model.coef_:
-    print(coef)

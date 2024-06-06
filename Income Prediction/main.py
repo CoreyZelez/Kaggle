@@ -26,43 +26,39 @@ scaler = StandardScaler()
 train_X = scaler.fit_transform(train_X)
 test_X = scaler.transform(test_X)
 
+accuracy_scores = []
+k_values = []
+
 selected_features = []
 remaining_features = list(range(train_X.shape[1]))
-k = 1
-while len(selected_features) < k:
-    best_feature = None
-    best_score = -np.inf
-    for feature in remaining_features:
-        features_to_use = selected_features + [feature]
-        train_X_subset = train_X[:, features_to_use]
-        test_X_subset = test_X[:, features_to_use]
-        model = LogisticRegression()
-        model.fit(train_X_subset, train_y)
-        y_pred = model.predict(test_X_subset)
-        score = accuracy_score(test_y, y_pred)
-        if score > best_score:
-            best_score = score
-            best_feature = feature
-    selected_features.append(best_feature)
-    remaining_features.remove(best_feature)
+for k in [1, 2, 3, 4, 5, 6, 7, 8, 9] + list(range(10, 101, 5)):
+    while len(selected_features) < k:
+        best_feature = None
+        best_score = -np.inf
+        for feature in remaining_features:
+            features_to_use = selected_features + [feature]
+            train_X_subset = train_X[:, features_to_use]
+            test_X_subset = test_X[:, features_to_use]
+            model = LogisticRegression()
+            model.fit(train_X_subset, train_y)
+            y_pred = model.predict(test_X_subset)
+            score = accuracy_score(test_y, y_pred)
+            if score > best_score:
+                best_score = score
+                best_feature = feature
+        selected_features.append(best_feature)
+        remaining_features.remove(best_feature)
+    final_features = selected_features
+    model = LogisticRegression()  
+    model.fit(train_X[:, final_features] , train_y)
+    y_pred = model.predict(test_X[:, final_features])
+    k_values.append(k)
+    accuracy_scores.append(accuracy_score(test_y, y_pred))
 
-final_features = remaining_features
-train_X_k = train_X[:, final_features] 
-test_X_k = test_X[:, final_features]  
-model = LogisticRegression()  
-model.fit(train_X_k, train_y)
-y_pred1 = model.predict(test_X_k)
+plt.plot(k_values, accuracy_scores)
+plt.title("Forward Stepwise Regressions")
+plt.xlabel('k Value')
+plt.ylabel('Accuracy Score')
+plt.show()
 
-model = LogisticRegression()
-model.fit(train_X, train_y)
-y_pred2 = model.predict(test_X)
-
-# Evaluating the model.
-print(train_X.shape[1])
-print(k)
-accuracy1 = accuracy_score(test_y, y_pred1)
-accuracy2 = accuracy_score(test_y, y_pred2)
-
-print("accuracy k forward ", accuracy1)
-print("accuracy OLS ", accuracy2)
 

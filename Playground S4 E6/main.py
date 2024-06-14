@@ -24,6 +24,14 @@ qualitative_variables = ["Course", "Application mode", "Previous qualification",
 X_train = pd.get_dummies(X_train, columns = qualitative_variables)
 X_test = pd.get_dummies(X_test, columns = qualitative_variables)
 
+# Remove dummy columns which have a low number of observations of the associated categorical value.
+threshold = 10
+for column in X_train.columns:
+    unique_values = X_train[column].unique()
+    if (len(unique_values) == 2 and 0 in unique_values and 1 in unique_values 
+        and X_train[column].sum() < threshold):
+        X_train.drop(column, axis = 1, inplace = True)
+
 # Add missing columns from training data to validation and test data.
 for column in X_train.columns:
     if column not in X_test:
@@ -45,21 +53,20 @@ X_test = scaler.transform(X_test)
 
 assert(X_train.shape[1] == X_test.shape[1] == X_validate.shape[1])
 
-tree = DecisionTreeClassifier(max_depth = 9)
+tree = DecisionTreeClassifier(max_depth = 9, min_samples_split = 100)
 forest_low_depth = RandomForestClassifier(n_estimators = 400, max_depth = 4)
 forest_high_depth = RandomForestClassifier(n_estimators = 200, max_depth = 8)
 logistic_regression = LogisticRegression()
-lda = LinearDiscriminantAnalysis()
 
-models = [tree, forest_high_depth, logistic_regression, lda]
+models = [tree, forest_high_depth, logistic_regression]
 
 ensemble = Ensemble(models)
 ensemble.fit(X_pre_train, y_pre_train)
 ensemble.score_individual_models(X_validate, y_validate)
 ensemble.calc_linear_weights(min_weight = 22, max_weight = 28)
 
-ensemble.fit(X_train, y_train)
-y_pred = ensemble.predict(X_test)
+logistic_regression.fit(X_train, y_train)
+y_pred = logistic_regression.predict(X_test)
 
 results_df = pd.DataFrame({'id': test_data['id'], 'Target': y_pred})
 results_df.to_csv("Playground S4 E6/Data/submission.csv", index = False)
